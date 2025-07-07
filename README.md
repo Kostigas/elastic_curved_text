@@ -10,7 +10,6 @@ This is a smooth, interactive marquee animation built using **jQuery** and **GSA
 - ✅ Fully implemented in jQuery + GSAP (no React)
 - ✅ Drag horizontally to scroll the text manually
 - ✅ Drag vertically to dynamically bend the curve
-- ✅ Curve bends **toward the drag position** (follows your mouse)
 - ✅ On release, curve **eases back to flat**
 - ✅ Scrolls infinitely and seamlessly
 
