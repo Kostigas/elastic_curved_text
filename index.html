@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Curved text</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+
+    <style>
+        body{
+            margin: 0;
+            background: black;
+           font-family: "Raleway", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: <weight>;
+  font-style: normal;
+        }
+        .curved-loop-jacket {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .curved-loop-svg {
+            user-select: none;
+            width: 100%;
+            aspect-ratio: 100 / 12;
+            overflow: visible;
+            display: block;
+            font-size: 6rem;
+            fill: #ffffff;
+            font-weight: 700;
+            letter-spacing: 5px;
+            text-transform: uppercase;
+            line-height: 1;
+            cursor: grab;
+        }
+
+        h1{
+            font-weight: normal;
+            position: fixed;
+            left: 50%;
+            bottom: 20px;
+            color: white;
+            font-size: 20px;
+            transform: translateX(-50%);
+        }
+    </style>
+</head>
+<body>
+    <div id="curved-loop"
+        class="curved-loop-jacket custom-text-style"
+        data-text="Solomon Grundy, Born on a Monday, Christened on Tuesday, Married on Wednesday, Took ill on Thursday, Worse on Friday, Died on Saturday, Buried on Sunday. This is the end Of Solomon Grundy"
+        data-speed="3"
+        data-direction="right"
+        data-interactive="true"
+        data-curve="500">
+
+    <svg class="curved-loop-svg" viewBox="0 0 1440 120">
+        <defs>
+        <path id="curved-path" fill="none" stroke="transparent"/>
+        </defs>
+        <text font-weight="bold" xml:space="preserve">
+        <textPath href="#curved-path" id="text-path" xml:space="preserve"></textPath>
+        </text>
+    </svg>
+    <h1>DRAG THE TEXT</h1>
+    </div>
+
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script>
+        $(document).ready(function () {
+        const $loop = $('#curved-loop');
+        const textRaw = ($loop.data('text') || '').trim();
+        const text = textRaw.replace(/\s+$/, '') + '\u00A0';
+        const speed = parseFloat($loop.data('speed')) || 2;
+        let direction = ($loop.data('direction') === 'right') ? 1 : -1;
+        const interactive = $loop.data('interactive') === true || $loop.data('interactive') === 'true';
+
+        const $textPath = $('#text-path');
+        const $path = $('#curved-path');
+
+        // Curve control
+        let curveAmount = 0;
+        function updateCurvePath(amount) {
+            const pathD = `M-100,40 Q500,${40 + amount} 1540,40`;
+            $path.attr('d', pathD);
+        }
+        updateCurvePath(0); // Start flat
+
+        // Measure single text unit
+        const svgNS = "http://www.w3.org/2000/svg";
+        const tempSvg = document.createElementNS(svgNS, "svg");
+        const tempText = document.createElementNS(svgNS, "text");
+        tempText.setAttribute("xml:space", "preserve");
+        tempText.setAttribute("style", "visibility:hidden; position:absolute;");
+        tempText.textContent = text;
+        tempSvg.appendChild(tempText);
+        document.body.appendChild(tempSvg);
+        const unitWidth = tempText.getComputedTextLength();
+        document.body.removeChild(tempSvg);
+
+        // Repeat text to fill path
+        const pathLength = $path[0].getTotalLength();
+        const repeats = Math.ceil(pathLength / unitWidth) + 4;
+        const fullText = text.repeat(repeats);
+        $textPath.text(fullText);
+
+        const totalTextWidth = unitWidth * repeats;
+
+        // Animation variables
+        let offset = 0;
+        let velocity = 0;
+        let animating = true;
+
+        function animateLoop() {
+            if (!animating) return;
+
+            offset += direction * speed + velocity;
+
+            if (offset > totalTextWidth) offset = 0;
+            if (offset < 0) offset = totalTextWidth;
+
+            gsap.set($textPath[0], { attr: { startOffset: -offset } });
+            requestAnimationFrame(animateLoop);
+        }
+
+        animateLoop();
+
+        // Drag interaction
+        if (interactive) {
+            let dragging = false;
+            let lastX = 0;
+            let lastY = 0;
+            let curveReturnTween = null;
+
+            $loop.on('pointerdown', function (e) {
+            dragging = true;
+            animating = false;
+            lastX = e.clientX;
+            lastY = e.clientY;
+            velocity = 0;
+
+            if (curveReturnTween) curveReturnTween.kill();
+            $loop.css('cursor', 'grabbing');
+            });
+
+            $loop.on('pointermove', function (e) {
+            if (!dragging) return;
+
+            const dx = e.clientX - lastX;
+            const dy = e.clientY - lastY;
+            lastX = e.clientX;
+            lastY = e.clientY;
+
+            offset -= dx;
+            velocity = dx * 1;
+
+            // Apply vertical drag to curve
+            curveAmount += dy * 0.5;
+            curveAmount = Math.max(-400, Math.min(400, curveAmount)); // Clamp
+            updateCurvePath(curveAmount);
+
+            gsap.set($textPath[0], { attr: { startOffset: -offset } });
+            });
+
+            $loop.on('pointerup pointerleave', function () {
+            if (!dragging) return;
+            dragging = false;
+            animating = true;
+
+            //   if (Math.abs(velocity) > 0.5) {
+            //     direction = velocity < 0 ? 1 : -1;
+            //   }
+
+            velocity = 0;
+            $loop.css('cursor', 'grab');
+
+            // Animate curve back to flat
+            curveReturnTween = gsap.to({ val: curveAmount }, {
+                val: 0,
+                duration: 0.8,
+                ease: "elastic.out",
+                onUpdate: function () {
+                curveAmount = this.targets()[0].val;
+                updateCurvePath(curveAmount);
+                },
+                onComplete: () => {
+                animateLoop();
+                }
+            });
+            });
+        }
+        });
+    </script>
+
+</body>
+</html>
